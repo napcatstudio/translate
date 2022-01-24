@@ -185,7 +185,7 @@ func NewXlnsMap(base1, base2 io.Reader) (XlnsMap, error) {
 		if !read {
 			err := b2sc.Err()
 			if err == nil {
-				err = fmt.Errorf("Mismatched word files")
+				err = fmt.Errorf("mismatched word files")
 			}
 			return nil, err
 		}
