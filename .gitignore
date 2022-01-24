@@ -1,3 +1,10 @@
+# Keys and personal access tokens (github)
+*.json
+personalaccesstoken
+
+# All words files for now.
+*.words
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
