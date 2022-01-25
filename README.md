@@ -2,7 +2,7 @@
 
 Tools to maintain meaning ordered word files.
 
-## translate binary
+## translate tool
 
 translate is a tool for managing meaning ordered words files.
 
@@ -37,12 +37,11 @@ The commands are:
 	check
 	  Quick wordsDir check.  Does not check translation accuracy just
 	  consistency.  Does not call the Google Translate API.
-	recreate  [-credentials credentialsJson] mainLang
-	  Recreate wordsDir meaning ordered words files.
 	supported displayLang
 	  Show the current Google supported languages in displayLang.
-	update  [-credentials credentialsJson] mainLang
-	  Updates all meaning ordered words files in wordsDir.
+	update mainLang
+	  Updates all meaning ordered words files in wordsDir.  Effectively,
+	  calls add on each existing non-mainLang language.
 
 ## More on meaning ordered word files
 
@@ -53,7 +52,8 @@ A directory of these files can be maintained with these tools so that for differ
 
 ## Reference
 
-[Google Translate API V3](https://pkg.go.dev/google.golang.org/api/translate/v3)
+[Cloud Translation API](https://pkg.go.dev/cloud.google.com/go/translate/apiv3)
+[More Cloud Translation API](https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/translate/v3)
 
 ## golang
 

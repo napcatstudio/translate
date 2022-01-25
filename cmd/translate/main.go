@@ -51,12 +51,11 @@ The commands are:
 	check
 	  Quick wordsDir check.  Does not check translation accuracy just
 	  consistency.  Does not call the Google Translate API.
-	recreate  [-credentials credentialsJson] mainLang
-	  Recreate wordsDir meaning ordered words files.
 	supported displayLang
 	  Show the current Google supported languages in displayLang.
-	update  [-credentials credentialsJson] mainLang
-	  Updates all meaning ordered words files in wordsDir.
+	update mainLang
+	  Updates all meaning ordered words files in wordsDir.  Effectively,
+	  calls add on each existing non-mainLang language.
 
 `
 )
@@ -90,15 +89,16 @@ func main() {
 		err = add(*wordsDir, *credentialsJson, args[1], args[2])
 	case "check":
 		err = check(*wordsDir)
-	case "recreate":
-		err = recreate(*wordsDir)
 	case "supported":
 		if len(args) != 2 {
 			fatal_usage(fmt.Errorf("bad displayLang"))
 		}
 		err = supported(*credentialsJson, args[1])
 	case "update":
-		err = update(*wordsDir)
+		if len(args) != 2 {
+			fatal_usage(fmt.Errorf("bad mainLang"))
+		}
+		err = update(*wordsDir, *credentialsJson, args[1])
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v", err)
@@ -141,7 +141,6 @@ func add(wordsDir, credentialsJson, mainLang, newLang string) error {
 	}
 	ctx := context.Background()
 	option := option.WithCredentialsFile(credentialsJson)
-	//fmt.Printf("%#v\n", option)
 	client, err := tr.NewTranslationClient(ctx, option)
 	if err != nil {
 		return fmt.Errorf("new client got %v", err)
@@ -195,15 +194,9 @@ func check(wordsDir string) error {
 	return nil
 }
 
-func recreate(wordsDir string) error {
-	fmt.Println("recreate")
-	return fmt.Errorf("recreate not implemented")
-}
-
 func supported(credentialsJson, lang string) error {
 	ctx := context.Background()
 	option := option.WithCredentialsFile(credentialsJson)
-	//fmt.Printf("%#v\n", option)
 	client, err := tr.NewTranslationClient(ctx, option)
 	if err != nil {
 		return fmt.Errorf("new client got %v", err)
@@ -243,7 +236,49 @@ func parent(credentialsJson string) (string, error) {
 	return fmt.Sprintf("projects/%s/locations/global", id), nil
 }
 
-func update(wordsDir string) error {
-	fmt.Println("update")
-	return fmt.Errorf("update not implemented")
+func update(wordsDir, credentialsJson, mainLang string) error {
+	words, err := xlns.WordsGetWords(wordsDir, mainLang)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	option := option.WithCredentialsFile(credentialsJson)
+	client, err := tr.NewTranslationClient(ctx, option)
+	if err != nil {
+		return fmt.Errorf("new client got %v", err)
+	}
+	defer client.Close()
+	parent, err := parent(credentialsJson)
+	if err != nil {
+		return err
+	}
+	langs, err := xlns.WordsLanguages(wordsDir)
+	if err != nil {
+		return err
+	}
+	for _, lang := range langs {
+		if lang == mainLang {
+			continue
+		}
+		req := &trpb.TranslateTextRequest{
+			Parent:             parent,
+			SourceLanguageCode: mainLang,
+			TargetLanguageCode: lang,
+			MimeType:           "text/plain", // Mime type plain or html
+			Contents:           words,
+		}
+		resp, err := client.TranslateText(ctx, req)
+		if err != nil {
+			return fmt.Errorf("translate text got  %v", err)
+		}
+		translated := make([]string, len(words))
+		for i, translation := range resp.GetTranslations() {
+			translated[i] = translation.GetTranslatedText()
+		}
+		err = xlns.WordsWriteWords(wordsDir, lang, translated)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
