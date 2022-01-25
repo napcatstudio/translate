@@ -15,61 +15,45 @@ import (
 
 type XlnsMap map[string]string
 
-func isCamelCase(s string) bool {
-	first := true
-	lastLower := false
-	for _, rv := range s {
-		if !unicode.IsLetter(rv) {
-			return false
+// TranslationMap takes two lists of words ordered by meaning and creates a
+// map from the first to the second.
+func NewXlnsMap(base1, base2 io.Reader) (XlnsMap, error) {
+	b1sc := bufio.NewScanner(base1)
+	b2sc := bufio.NewScanner(base2)
+	t := make(XlnsMap)
+	for b1sc.Scan() {
+		read := b2sc.Scan()
+		if !read {
+			err := b2sc.Err()
+			if err == nil {
+				err = fmt.Errorf("mismatched word files")
+			}
+			return nil, err
 		}
-		upper := unicode.IsUpper(rv)
-		if first {
-			first = false
-		} else if lastLower && upper {
-			return true
-		}
-		lastLower = !upper
+		t[strings.TrimSpace(b1sc.Text())] = strings.TrimSpace(b2sc.Text())
 	}
-	return false
+	if err := b1sc.Err(); err != nil {
+		return nil, err
+	}
+	if err := b2sc.Err(); err != nil {
+		return nil, err
+	}
+	return t, nil
 }
 
-func camelCasePieces(s string) []string {
-	pieces := make([]string, 0, 2)
-	lastLower := false
-	start := 0
-	for i := 0; i < len(s); {
-		rv, nb := utf8.DecodeRuneInString(s[i:])
-		isUpper := unicode.IsUpper(rv)
-		if isUpper && lastLower && i > 0 {
-			pieces = append(pieces, s[start:i])
-			start = i
-		}
-		lastLower = !isUpper
-		i += nb
+// XlnsMapFromFiles creates a XlnsMap from the files w1 and w2.
+func XlnsMapFromFiles(w1, w2 string) (XlnsMap, error) {
+	w1r, err := os.Open(w1)
+	if err != nil {
+		return nil, err
 	}
-	if start < len(s) {
-		pieces = append(pieces, s[start:])
+	defer w1r.Close()
+	w2r, err := os.Open(w2)
+	if err != nil {
+		return nil, err
 	}
-	//fmt.Println(s, ":", pieces)
-	return pieces
-}
-
-func firstLetterMatchCase(orig, s string) string {
-	origRune, _ := utf8.DecodeRuneInString(orig)
-	if unicode.IsUpper(origRune) {
-		sRune, width := utf8.DecodeRuneInString(s)
-		//fmt.Println(orig, s, strings.ToUpper(string(sRune)) + s[width:])
-		return strings.ToUpper(string(sRune)) + s[width:]
-	}
-	return s
-}
-
-func cleanUp(orig, s string) string {
-	s = firstLetterMatchCase(orig, s)
-	if strings.HasSuffix(s, "-") {
-		s = s[:len(s)-1]
-	}
-	return s
+	defer w2r.Close()
+	return NewXlnsMap(w1r, w2r)
 }
 
 // Translate a string using the translation map.  Use target if there is no
@@ -174,43 +158,59 @@ func (xm XlnsMap) Key() []string {
 	return key
 }
 
-// TranslationMap takes two lists of words ordered by meaning and creates a
-// map from the first to the second.
-func NewXlnsMap(base1, base2 io.Reader) (XlnsMap, error) {
-	b1sc := bufio.NewScanner(base1)
-	b2sc := bufio.NewScanner(base2)
-	t := make(XlnsMap)
-	for b1sc.Scan() {
-		read := b2sc.Scan()
-		if !read {
-			err := b2sc.Err()
-			if err == nil {
-				err = fmt.Errorf("mismatched word files")
-			}
-			return nil, err
+func isCamelCase(s string) bool {
+	first := true
+	lastLower := false
+	for _, rv := range s {
+		if !unicode.IsLetter(rv) {
+			return false
 		}
-		t[strings.TrimSpace(b1sc.Text())] = strings.TrimSpace(b2sc.Text())
+		upper := unicode.IsUpper(rv)
+		if first {
+			first = false
+		} else if lastLower && upper {
+			return true
+		}
+		lastLower = !upper
 	}
-	if err := b1sc.Err(); err != nil {
-		return nil, err
-	}
-	if err := b2sc.Err(); err != nil {
-		return nil, err
-	}
-	return t, nil
+	return false
 }
 
-// XlnsMapFromFiles creates a XlnsMap from the files w1 and w2.
-func XlnsMapFromFiles(w1, w2 string) (XlnsMap, error) {
-	w1r, err := os.Open(w1)
-	if err != nil {
-		return nil, err
+func camelCasePieces(s string) []string {
+	pieces := make([]string, 0, 2)
+	lastLower := false
+	start := 0
+	for i := 0; i < len(s); {
+		rv, nb := utf8.DecodeRuneInString(s[i:])
+		isUpper := unicode.IsUpper(rv)
+		if isUpper && lastLower && i > 0 {
+			pieces = append(pieces, s[start:i])
+			start = i
+		}
+		lastLower = !isUpper
+		i += nb
 	}
-	defer w1r.Close()
-	w2r, err := os.Open(w2)
-	if err != nil {
-		return nil, err
+	if start < len(s) {
+		pieces = append(pieces, s[start:])
 	}
-	defer w2r.Close()
-	return NewXlnsMap(w1r, w2r)
+	//fmt.Println(s, ":", pieces)
+	return pieces
+}
+
+func firstLetterMatchCase(orig, s string) string {
+	origRune, _ := utf8.DecodeRuneInString(orig)
+	if unicode.IsUpper(origRune) {
+		sRune, width := utf8.DecodeRuneInString(s)
+		//fmt.Println(orig, s, strings.ToUpper(string(sRune)) + s[width:])
+		return strings.ToUpper(string(sRune)) + s[width:]
+	}
+	return s
+}
+
+func cleanUp(orig, s string) string {
+	s = firstLetterMatchCase(orig, s)
+	if strings.HasSuffix(s, "-") {
+		s = s[:len(s)-1]
+	}
+	return s
 }

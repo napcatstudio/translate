@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 
@@ -46,7 +45,7 @@ Usage:
 	translate [-words wordsDir] [-credentials credentialsJson] command [arguments]
 
 The commands are:
-	add [-credentials credentialsJson] mainLang newLang
+	add mainLang newLang
 	  Add a new meaning ordered words file for newLang based on mainLang to
 	  wordsDir.
 	check
@@ -85,7 +84,10 @@ func main() {
 	// Run command.
 	switch args[0] {
 	case "add":
-		err = add(*wordsDir)
+		if len(args) != 3 {
+			fatal_usage(fmt.Errorf("bad mainLang newLang"))
+		}
+		err = add(*wordsDir, *credentialsJson, args[1], args[2])
 	case "check":
 		err = check(*wordsDir)
 	case "recreate":
@@ -99,9 +101,9 @@ func main() {
 		err = update(*wordsDir)
 	}
 	if err != nil {
-		log.Fatalf("error: %v", err)
+		fmt.Fprintf(os.Stderr, "error: %v", err)
+		os.Exit(2)
 	}
-	fmt.Println("it worked?")
 }
 
 func fatal_usage(err error) {
@@ -132,9 +134,40 @@ func isFile(file string) error {
 	return nil
 }
 
-func add(wordsDir string) error {
-	fmt.Println("add")
-	return fmt.Errorf("add not implemented")
+func add(wordsDir, credentialsJson, mainLang, newLang string) error {
+	words, err := xlns.WordsGetWords(wordsDir, mainLang)
+	if err != nil {
+		return err
+	}
+	ctx := context.Background()
+	option := option.WithCredentialsFile(credentialsJson)
+	//fmt.Printf("%#v\n", option)
+	client, err := tr.NewTranslationClient(ctx, option)
+	if err != nil {
+		return fmt.Errorf("new client got %v", err)
+	}
+	defer client.Close()
+	parent, err := parent(credentialsJson)
+	if err != nil {
+		return err
+	}
+	req := &trpb.TranslateTextRequest{
+		Parent:             parent,
+		SourceLanguageCode: mainLang,
+		TargetLanguageCode: newLang,
+		MimeType:           "text/plain", // Mime type plain or html
+		Contents:           words,
+	}
+	resp, err := client.TranslateText(ctx, req)
+	if err != nil {
+		return fmt.Errorf("translate text got  %v", err)
+	}
+	translated := make([]string, len(words))
+	for i, translation := range resp.GetTranslations() {
+		translated[i] = translation.GetTranslatedText()
+	}
+	err = xlns.WordsWriteWords(wordsDir, newLang, translated)
+	return nil
 }
 
 func check(wordsDir string) error {
@@ -167,7 +200,7 @@ func recreate(wordsDir string) error {
 	return fmt.Errorf("recreate not implemented")
 }
 
-func supported(credentialsJson string, lang string) error {
+func supported(credentialsJson, lang string) error {
 	ctx := context.Background()
 	option := option.WithCredentialsFile(credentialsJson)
 	//fmt.Printf("%#v\n", option)
