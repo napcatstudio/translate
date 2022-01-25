@@ -2,35 +2,48 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/napcatstudio/translate/xlns"
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
+
+	tr "cloud.google.com/go/translate/apiv3"
+	"github.com/napcatstudio/translate/xlns"
+	"google.golang.org/api/option"
+	trpb "google.golang.org/genproto/googleapis/cloud/translate/v3"
 )
 
-/*
-    Uses the service information in credentialsJson to access the Google
-    Translate API to update meaning ordered words files in wordsDir.
-
-Where:
-    credentialsJson is a JSON file with Google Service info and keys.
-    wordsDir is a directory containing meaning ordered words files.
-    mainLang is the ISO639 code for the words file to be used to update
-        the others.
-
-Example:
-    translate yourServiceKey.json words en
-*/
-
 const (
-	USAGE = `translate is a tool for managing meaning ordered words files.
+	PROJECT_ID = "project_id"
+	USAGE      = `translate is a tool for managing meaning ordered words files.
 
-It uses the Google Translate API for translating.
+A meaning ordered words file is a file which has words, in one language,
+based on another file in a different language.  The file name specifies the
+language.  The filename must be of the form XX.words, where XX is a ISO-639
+two letter language code.
+
+For instance:
+
+en.words
+Easy to use.
+Easy.
+
+de.words
+Einfach zu gebrauchen.
+Einfach.
+
+fi.words
+Helppokäyttöinen.
+Helppo.
+
+It uses the Google Translate API V3 for translating.
 
 Usage:
-	translate [-words wordsDir] command [arguments]
+	translate [-words wordsDir] [-credentials credentialsJson] command [arguments]
 
 The commands are:
 	add [-credentials credentialsJson] mainLang newLang
@@ -38,9 +51,11 @@ The commands are:
 	  wordsDir.
 	check
 	  Quick wordsDir check.  Does not check translation accuracy just
-	  consistency.
+	  consistency.  Does not call the Google Translate API.
 	recreate  [-credentials credentialsJson] mainLang
 	  Recreate wordsDir meaning ordered words files.
+	supported displayLang
+	  Show the current Google supported languages in displayLang.
 	update  [-credentials credentialsJson] mainLang
 	  Updates all meaning ordered words files in wordsDir.
 
@@ -48,96 +63,51 @@ The commands are:
 )
 
 func main() {
-	wordsDir := flag.String("words", "words", "meaning ordered words directory")
-	//addCmd := flag.NewFlagSet("add", flag.ExitOnError)
-	//addCreds :=
-	//checkCmd := flag.NewFlagSet("check", flag.ExitOnError)
-	//checkWordsDir := checkCmd.String("words", "words", "meaning ordered words directory")
-	//recreateCmd := flag.NewFlagSet("recreate", flag.ExitOnError)
-	//updateCmd := flag.NewFlagSet("update", flag.ExitOnError)
-	//fooEnable := fooCmd.Bool("enable", false, "enable")
-	//fooName := fooCmd.String("name", "", "name")
+	wordsDir := flag.String(
+		"words", "words", "meaning ordered words directory")
+	credentialsJson := flag.String(
+		"credentials", "credentials.json", "Google service account information")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, USAGE)
 		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nadd mainLang newLang\n")
-		fmt.Fprintf(os.Stderr, "\ncheck\n")
-		//checkCmd.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nrecreate\n")
-		fmt.Fprintf(os.Stderr, "\nupdate\n")
 	}
 	flag.Parse()
 	err := isDir(*wordsDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "bad wordsDir (%v)", err)
-		flag.Usage()
-		log.Fatal(err)
+		fatal_usage(fmt.Errorf("bad wordsDir (%v)", err))
 	}
+	args := flag.Args()
 	if len(flag.Args()) < 1 {
-		flag.Usage()
-		log.Fatal("no command")
+		fatal_usage(fmt.Errorf("no command"))
 	}
 
 	// Run command.
-	switch flag.Arg(0) {
+	switch args[0] {
 	case "add":
 		err = add(*wordsDir)
 	case "check":
 		err = check(*wordsDir)
 	case "recreate":
 		err = recreate(*wordsDir)
+	case "supported":
+		if len(args) != 2 {
+			fatal_usage(fmt.Errorf("bad displayLang"))
+		}
+		err = supported(*credentialsJson, args[1])
 	case "update":
 		err = update(*wordsDir)
 	}
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-	/*
-		args := flag.Args()
-		if len(args) != 3 {
-			usage("incorrect number of arguments")
-		}
-	*/
-	/*
-		credentialsJson := args[0]
-		wordsDir := args[1]
-		mainLang := args[2] // ISO-639 two letter code.
-		if !isDir(wordsDir) {
-			usage(fmt.Sprintf("%s is not a directory", wordsDir))
-		}
-		lang := xlns.LanguageForIso639(mainLang)
-		if lang == "" {
-			usage(fmt.Sprintf("%s is not an ISO-639 language", mainLang))
-		}
-		baseWordsFile := path.Join(wordsDir, mainLang+".words")
-		if !isFile(baseWordsFile) {
-			usage(fmt.Sprintf("%s not found", baseWordsFile))
-		}
-
-		_, err := xlns.GetTranslateService(credentialsJson)
-		if err != nil {
-			log.Fatalf("error %v", err)
-		}
-	*/
-
-	//editId, err := apta.EditsInsert(service, packageName)
-	//if err != nil {
-	//	log.Fatalf("error %v", err)
-	//}
-
-	// Details
-	//appDetails, err := service.Edits.Details.Get(packageName, editId).Do()
-	//if err != nil {
-	//	log.Fatalf("getting %s details got %v", packageName, err)
-	//}
-	//fmt.Printf("%s %s\n%s\n%s\n",
-	//	packageName, appDetails.DefaultLanguage,
-	//	appDetails.ContactEmail,
-	//	appDetails.ContactWebsite)
-	//defLang := appDetails.DefaultLanguage
-
 	fmt.Println("it worked?")
+}
+
+func fatal_usage(err error) {
+	fmt.Fprintf(os.Stderr, "error: %v", err)
+	flag.Usage()
+	os.Exit(2)
 }
 
 func isDir(dir string) error {
@@ -197,29 +167,50 @@ func recreate(wordsDir string) error {
 	return fmt.Errorf("recreate not implemented")
 }
 
+func supported(credentialsJson string, lang string) error {
+	ctx := context.Background()
+	option := option.WithCredentialsFile(credentialsJson)
+	//fmt.Printf("%#v\n", option)
+	client, err := tr.NewTranslationClient(ctx, option)
+	if err != nil {
+		return fmt.Errorf("new client got %v", err)
+	}
+	defer client.Close()
+	parent, err := parent(credentialsJson)
+	if err != nil {
+		return err
+	}
+	req := &trpb.GetSupportedLanguagesRequest{
+		Parent:              parent,
+		DisplayLanguageCode: lang}
+	langs, err := client.GetSupportedLanguages(ctx, req)
+	if err != nil {
+		return fmt.Errorf("supported languages got %v", err)
+	}
+	for _, lang := range langs.Languages {
+		fmt.Printf("\t%s %s\n", lang.LanguageCode, lang.DisplayName)
+	}
+	return nil
+}
+
+func parent(credentialsJson string) (string, error) {
+	credentials, err := ioutil.ReadFile(credentialsJson)
+	if err != nil {
+		return "", fmt.Errorf("reading credentials got %v", err)
+	}
+	data := make(map[string]string)
+	err = json.Unmarshal(credentials, &data)
+	if err != nil {
+		return "", fmt.Errorf("unpacking credentials got %v", err)
+	}
+	id, ok := data[PROJECT_ID]
+	if !ok {
+		return "", fmt.Errorf("no %s in credentials", PROJECT_ID)
+	}
+	return fmt.Sprintf("projects/%s/locations/global", id), nil
+}
+
 func update(wordsDir string) error {
 	fmt.Println("update")
 	return fmt.Errorf("update not implemented")
 }
-
-//func usage() {
-//	text := `credentialsJson wordsDir mainLang
-//
-//    Uses the service information in credentialsJson to access the Google
-//    Translate API to update meaning ordered words files in wordsDir.
-//
-//Where:
-//    credentialsJson is a JSON file with Google Service info and keys.
-//    wordsDir is a directory containing meaning ordered words files.
-//    mainLang is the ISO639 code for the words file to be used to update
-//        the others.
-//
-//Example:
-//    translate yourServiceKey.json words en
-//`
-//	log.Fatalf("ERROR: %s.\nUSAGE:\n    %s %s",
-//		why,
-//		os.Args[0],
-//		text)
-//}
-//

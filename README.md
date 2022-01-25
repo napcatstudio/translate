@@ -28,3 +28,7 @@ languages the meanings correspond by line.
 ## Reference
 
 [Google Translate API V3](https://pkg.go.dev/google.golang.org/api/translate/v3)
+
+## golang
+
+github.com/napcatstudio/translate
