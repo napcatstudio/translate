@@ -45,7 +45,7 @@ Usage:
 	translate [-words wordsDir] [-credentials credentialsJson] command [arguments]
 
 The commands are:
-	add mainLang newLang
+	add mainLang newLang [newLang...]
 	  Add a new meaning ordered words file for newLang based on mainLang to
 	  wordsDir.
 	check
@@ -83,10 +83,10 @@ func main() {
 	// Run command.
 	switch args[0] {
 	case "add":
-		if len(args) != 3 {
-			fatal_usage(fmt.Errorf("bad mainLang newLang"))
+		if len(args) < 3 {
+			fatal_usage(fmt.Errorf("no newLang"))
 		}
-		err = add(*wordsDir, *credentialsJson, args[1], args[2])
+		err = add(*wordsDir, *credentialsJson, args[1], args[2:])
 	case "check":
 		err = check(*wordsDir)
 	case "supported":
@@ -134,7 +134,7 @@ func isFile(file string) error {
 	return nil
 }
 
-func add(wordsDir, credentialsJson, mainLang, newLang string) error {
+func add(wordsDir, credentialsJson, mainLang string, newLangs []string) error {
 	words, err := xlns.WordsGetWords(wordsDir, mainLang)
 	if err != nil {
 		return err
@@ -150,22 +150,27 @@ func add(wordsDir, credentialsJson, mainLang, newLang string) error {
 	if err != nil {
 		return err
 	}
-	req := &trpb.TranslateTextRequest{
-		Parent:             parent,
-		SourceLanguageCode: mainLang,
-		TargetLanguageCode: newLang,
-		MimeType:           "text/plain", // Mime type plain or html
-		Contents:           words,
+	for _, newLang := range newLangs {
+		req := &trpb.TranslateTextRequest{
+			Parent:             parent,
+			SourceLanguageCode: mainLang,
+			TargetLanguageCode: newLang,
+			MimeType:           "text/plain", // Mime type plain or html
+			Contents:           words,
+		}
+		resp, err := client.TranslateText(ctx, req)
+		if err != nil {
+			return fmt.Errorf("translate text got  %v", err)
+		}
+		translated := make([]string, len(words))
+		for i, translation := range resp.GetTranslations() {
+			translated[i] = translation.GetTranslatedText()
+		}
+		err = xlns.WordsWriteWords(wordsDir, newLang, translated)
+		if err != nil {
+			return fmt.Errorf("writing words for %s", newLang)
+		}
 	}
-	resp, err := client.TranslateText(ctx, req)
-	if err != nil {
-		return fmt.Errorf("translate text got  %v", err)
-	}
-	translated := make([]string, len(words))
-	for i, translation := range resp.GetTranslations() {
-		translated[i] = translation.GetTranslatedText()
-	}
-	err = xlns.WordsWriteWords(wordsDir, newLang, translated)
 	return nil
 }
 
