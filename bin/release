@@ -1,0 +1,4 @@
+#!/bin/bash
+cd $PD
+go build cmd/translate/main.go
+mv main $DEV/go/bin/translate
