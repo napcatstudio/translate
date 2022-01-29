@@ -2,22 +2,15 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 
-	tr "cloud.google.com/go/translate/apiv3"
 	"github.com/napcatstudio/translate/xlns"
-	"google.golang.org/api/option"
-	trpb "google.golang.org/genproto/googleapis/cloud/translate/v3"
 )
 
 const (
-	PROJECT_ID = "project_id"
-	USAGE      = `translate is a tool for managing meaning ordered words files.
+	USAGE = `translate is a tool for managing meaning ordered words files.
 
 A meaning ordered words file is a file which has words, in one language,
 based on another file in a different language.  The file name specifies the
@@ -87,7 +80,7 @@ func main() {
 		if len(args) < 3 {
 			fatal_usage(fmt.Errorf("no newLang"))
 		}
-		err = add(*wordsDir, *credentialsJson, args[1], args[2:])
+		err = xlns.XlnsAdd(*wordsDir, *credentialsJson, args[1], args[2:])
 	case "check":
 		err = xlns.WordsCheck(*wordsDir)
 	case "merge":
@@ -103,12 +96,12 @@ func main() {
 		if len(args) != 2 {
 			fatal_usage(fmt.Errorf("bad displayLang"))
 		}
-		err = supported(*credentialsJson, args[1])
+		err = xlns.XlnsSupported(*credentialsJson, args[1])
 	case "update":
 		if len(args) != 2 {
 			fatal_usage(fmt.Errorf("bad mainLang"))
 		}
-		err = update(*wordsDir, *credentialsJson, args[1])
+		err = xlns.XlnsUpdate(*wordsDir, *credentialsJson, args[1])
 	}
 	if err != nil {
 		fatal(err)
@@ -144,135 +137,6 @@ func isFile(file string) error {
 	}
 	if fileInfo.IsDir() {
 		return fmt.Errorf("%s not file", file)
-	}
-	return nil
-}
-
-func add(wordsDir, credentialsJson, mainLang string, newLangs []string) error {
-	words, err := xlns.WordsGetWords(wordsDir, mainLang)
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-	option := option.WithCredentialsFile(credentialsJson)
-	client, err := tr.NewTranslationClient(ctx, option)
-	if err != nil {
-		return fmt.Errorf("new client got %v", err)
-	}
-	defer client.Close()
-	parent, err := parent(credentialsJson)
-	if err != nil {
-		return err
-	}
-	for _, newLang := range newLangs {
-		req := &trpb.TranslateTextRequest{
-			Parent:             parent,
-			SourceLanguageCode: mainLang,
-			TargetLanguageCode: newLang,
-			MimeType:           "text/plain", // Mime type plain or html
-			Contents:           words,
-		}
-		resp, err := client.TranslateText(ctx, req)
-		if err != nil {
-			return fmt.Errorf("translate text got  %v", err)
-		}
-		translated := make([]string, len(words))
-		for i, translation := range resp.GetTranslations() {
-			translated[i] = translation.GetTranslatedText()
-		}
-		err = xlns.WordsWriteWords(wordsDir, newLang, translated)
-		if err != nil {
-			return fmt.Errorf("writing words for %s", newLang)
-		}
-	}
-	return nil
-}
-
-func supported(credentialsJson, lang string) error {
-	ctx := context.Background()
-	option := option.WithCredentialsFile(credentialsJson)
-	client, err := tr.NewTranslationClient(ctx, option)
-	if err != nil {
-		return fmt.Errorf("new client got %v", err)
-	}
-	defer client.Close()
-	parent, err := parent(credentialsJson)
-	if err != nil {
-		return err
-	}
-	req := &trpb.GetSupportedLanguagesRequest{
-		Parent:              parent,
-		DisplayLanguageCode: lang}
-	langs, err := client.GetSupportedLanguages(ctx, req)
-	if err != nil {
-		return fmt.Errorf("supported languages got %v", err)
-	}
-	for _, lang := range langs.Languages {
-		fmt.Printf("\t%s %s\n", lang.LanguageCode, lang.DisplayName)
-	}
-	return nil
-}
-
-func parent(credentialsJson string) (string, error) {
-	credentials, err := ioutil.ReadFile(credentialsJson)
-	if err != nil {
-		return "", fmt.Errorf("reading credentials got %v", err)
-	}
-	data := make(map[string]string)
-	err = json.Unmarshal(credentials, &data)
-	if err != nil {
-		return "", fmt.Errorf("unpacking credentials got %v", err)
-	}
-	id, ok := data[PROJECT_ID]
-	if !ok {
-		return "", fmt.Errorf("no %s in credentials", PROJECT_ID)
-	}
-	return fmt.Sprintf("projects/%s/locations/global", id), nil
-}
-
-func update(wordsDir, credentialsJson, mainLang string) error {
-	words, err := xlns.WordsGetWords(wordsDir, mainLang)
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-	option := option.WithCredentialsFile(credentialsJson)
-	client, err := tr.NewTranslationClient(ctx, option)
-	if err != nil {
-		return fmt.Errorf("new client got %v", err)
-	}
-	defer client.Close()
-	parent, err := parent(credentialsJson)
-	if err != nil {
-		return err
-	}
-	langs, err := xlns.WordsLanguages(wordsDir)
-	if err != nil {
-		return err
-	}
-	for _, lang := range langs {
-		if lang == mainLang {
-			continue
-		}
-		req := &trpb.TranslateTextRequest{
-			Parent:             parent,
-			SourceLanguageCode: mainLang,
-			TargetLanguageCode: lang,
-			MimeType:           "text/plain", // Mime type plain or html
-			Contents:           words,
-		}
-		resp, err := client.TranslateText(ctx, req)
-		if err != nil {
-			return fmt.Errorf("translate text got  %v", err)
-		}
-		translated := make([]string, len(words))
-		for i, translation := range resp.GetTranslations() {
-			translated[i] = translation.GetTranslatedText()
-		}
-		err = xlns.WordsWriteWords(wordsDir, lang, translated)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
