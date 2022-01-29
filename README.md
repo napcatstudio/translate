@@ -2,6 +2,11 @@
 
 Tools to maintain meaning ordered word files.
 
+It is a port of some pre go modules tools that go modules broke.  It was
+also broken by the Google Translate API changes and API security changes.
+
+It has one command line tool *translate*.
+
 ## translate tool
 
 translate is a tool for managing meaning ordered words files.
@@ -53,6 +58,7 @@ A directory of these files can be maintained with these tools so that for differ
 ## Reference
 
 [Cloud Translation API](https://pkg.go.dev/cloud.google.com/go/translate/apiv3)
+
 [More Cloud Translation API](https://pkg.go.dev/google.golang.org/genproto/googleapis/cloud/translate/v3)
 
 ## golang
