@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 
 	tr "cloud.google.com/go/translate/apiv3"
 	"github.com/napcatstudio/translate/xlns"
@@ -51,6 +50,8 @@ The commands are:
 	check
 	  Quick wordsDir check.  Does not check translation accuracy just
 	  consistency.  Does not call the Google Translate API.
+	merge [fromWordsDir]
+	  Updates wordsDir with the words in fromWordsDir.
 	supported displayLang
 	  Show the current Google supported languages in displayLang.
 	update mainLang
@@ -88,7 +89,16 @@ func main() {
 		}
 		err = add(*wordsDir, *credentialsJson, args[1], args[2:])
 	case "check":
-		err = check(*wordsDir)
+		err = xlns.WordsCheck(*wordsDir)
+	case "merge":
+		if len(args) != 2 {
+			fatal_usage(fmt.Errorf("wrong number of arguments"))
+		}
+		err = isDir(args[1])
+		if err != nil {
+			fatal_usage(err)
+		}
+		err = xlns.WordsMerge(*wordsDir, args[1])
 	case "supported":
 		if len(args) != 2 {
 			fatal_usage(fmt.Errorf("bad displayLang"))
@@ -101,14 +111,18 @@ func main() {
 		err = update(*wordsDir, *credentialsJson, args[1])
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v", err)
-		os.Exit(2)
+		fatal(err)
 	}
 }
 
 func fatal_usage(err error) {
 	fmt.Fprintf(os.Stderr, "error: %v", err)
 	flag.Usage()
+	os.Exit(2)
+}
+
+func fatal(err error) {
+	fmt.Fprintf(os.Stderr, "error: %v", err)
 	os.Exit(2)
 }
 
@@ -170,31 +184,6 @@ func add(wordsDir, credentialsJson, mainLang string, newLangs []string) error {
 		if err != nil {
 			return fmt.Errorf("writing words for %s", newLang)
 		}
-	}
-	return nil
-}
-
-func check(wordsDir string) error {
-	// Getting a list of languages will find any we don't know about.
-	langs, err := xlns.WordsLanguages(wordsDir)
-	if err != nil {
-		return fmt.Errorf("check got %v", err)
-	}
-	// Checking each file to the last will make sure that the files have the
-	// same number of words (not that the words are good translations).
-	last := ""
-	for _, lang := range langs {
-		current := path.Join(wordsDir, fmt.Sprintf("%s.words", lang))
-		fmt.Println(current)
-		if last == "" {
-			last = current
-			continue
-		}
-		_, err = xlns.XlnsMapFromFiles(last, current)
-		if err != nil {
-			return fmt.Errorf("check maps got %v", err)
-		}
-		last = current
 	}
 	return nil
 }

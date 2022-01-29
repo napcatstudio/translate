@@ -31,7 +31,7 @@ Usage:
 	translate [-words wordsDir] [-credentials credentialsJson] command [arguments]
 
 The commands are:
-	add mainLang newLang
+	add mainLang newLang [newLang..]
 	  Add a new meaning ordered words file for newLang based on mainLang to
 	  wordsDir.
 	check
