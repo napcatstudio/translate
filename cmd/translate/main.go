@@ -51,6 +51,13 @@ The commands are:
 	  Updates all meaning ordered words files in wordsDir.  Effectively,
 	  calls add on each existing non-mainLang language.
 
+Example:
+	translate add en es-419 pl
+
+	Uses Google Translate service credentials in 'credentials.json' translates
+	  'words/en.words' into ES-419 and PL, and adds them as
+	  'words/es-419.words' and 'words/pl.words'.
+
 `
 )
 
