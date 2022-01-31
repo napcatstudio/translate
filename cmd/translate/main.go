@@ -43,6 +43,8 @@ The commands are:
 	check
 	  Quick wordsDir check.  Does not check translation accuracy just
 	  consistency.  Does not call the Google Translate API.
+	list
+	  List the languages in wordsDir.
 	merge [fromWordsDir]
 	  Updates wordsDir with the words in fromWordsDir.
 	supported displayLang
@@ -90,6 +92,8 @@ func main() {
 		err = xlns.XlnsAdd(*wordsDir, *credentialsJson, args[1], args[2:])
 	case "check":
 		err = xlns.WordsCheck(*wordsDir)
+	case "list":
+		err = listLangs(*wordsDir)
 	case "merge":
 		if len(args) != 2 {
 			fatal_usage(fmt.Errorf("wrong number of arguments"))
@@ -113,6 +117,17 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
+}
+
+func listLangs(wordsDir string) error {
+	langs, err := xlns.WordsLanguages(wordsDir)
+	if err != nil {
+		return err
+	}
+	for _, lang := range langs {
+		fmt.Println(lang)
+	}
+	return nil
 }
 
 func fatal_usage(err error) {
