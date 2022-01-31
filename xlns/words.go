@@ -31,24 +31,21 @@ func WordsLanguages(wordsDir string) ([]string, error) {
 }
 
 // WordsHasLanguage returns whether or not we have a translation words file
-// for the given ISO-639 code.
-// DEPRECATED: Does not handle BCP-47 codes like ES-419.
-//func WordsHasLanguage(wordsDir, iso639 string) (bool, error) {
-//	iso639s, err := WordsLanguages(wordsDir)
-//	if err != nil {
-//		return false, err
-//	}
-//	lower := strings.ToLower(iso639)
-//	for _, wordsIso639 := range iso639s {
-//		if lower == wordsIso639 {
-//			return true, nil
-//		}
-//	}
-//	if "" == LanguageForIso639(iso639) {
-//		return false, fmt.Errorf("%s is not a ISO-639 code", iso639)
-//	}
-//	return false, nil
-//}
+// for the given code.
+// This used to check for strict ISO-639 languages.
+func WordsHasLanguage(wordsDir, lang string) (bool, error) {
+	langs, err := WordsLanguages(wordsDir)
+	if err != nil {
+		return false, err
+	}
+	lower := strings.ToLower(lang)
+	for _, wordsLang := range langs {
+		if lower == wordsLang {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 // WordsXlnsMap creates an XlnsMap object for the given languages.
 func WordsXlnsMap(wordsDir, sourceIso639, targetIso639 string) (XlnsMap, error) {
