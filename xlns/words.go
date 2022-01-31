@@ -30,17 +30,30 @@ func WordsLanguages(wordsDir string) ([]string, error) {
 	return langs, nil
 }
 
+// WordsLanguagesMap returns a map of language to bool for the languages
+// in wordsDir.
+func WordsLanguagesMap(wordsDir string) (map[string]bool, error) {
+	langs, err := WordsLanguages(wordsDir)
+	if err != nil {
+		return nil, err
+	}
+	langMap := make(map[string]bool)
+	for _, lang := range langs {
+		langMap[lang] = true
+	}
+	return langMap, nil
+}
+
 // WordsHasLanguage returns whether or not we have a translation words file
 // for the given code.
-// This used to check for strict ISO-639 languages.
+// This used to check for strict ISO-639 languages and not be case sensitive.
 func WordsHasLanguage(wordsDir, lang string) (bool, error) {
 	langs, err := WordsLanguages(wordsDir)
 	if err != nil {
 		return false, err
 	}
-	lower := strings.ToLower(lang)
 	for _, wordsLang := range langs {
-		if lower == wordsLang {
+		if lang == wordsLang {
 			return true, nil
 		}
 	}
