@@ -41,7 +41,7 @@ func NewXlnsMap(base1, base2 io.Reader) (XlnsMap, error) {
 	return t, nil
 }
 
-// XlnsMapFromFiles creates a XlnsMap from the files w1 and w2.
+// XlnsMapFromFiles creates a XlnsMap from the words files w1 and w2.
 func XlnsMapFromFiles(w1, w2 string) (XlnsMap, error) {
 	w1r, err := os.Open(w1)
 	if err != nil {

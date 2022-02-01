@@ -61,3 +61,45 @@ func TestWordsHasLanguage(t *testing.T) {
 		}
 	}
 }
+
+func TestES419(t *testing.T) {
+	words, err := xlns.WordsGetWords(wordsDir, "es-419")
+	if err != nil {
+		t.Fatalf("es-419 WordsGetWords failed")
+	}
+	if len(words) == 0 {
+		t.Errorf("es-419 has no words")
+	}
+	xmap, err := xlns.WordsXlnsMap(wordsDir, "en", "es-419")
+	if err != nil {
+		t.Fatalf("es-419 WordsXlnsMap failed")
+	}
+	if len(xmap) == 0 {
+		t.Errorf("es-419 map has no words")
+	}
+}
+
+func TestWordsLanguages(t *testing.T) {
+	langs, _ := xlns.WordsLanguages(wordsDir)
+	enWords, _ := xlns.WordsGetWords(wordsDir, "en")
+	for _, lang := range langs {
+		if lang == "en" {
+			continue
+		}
+		xlnsMap, _ := xlns.WordsXlnsMap(wordsDir, "en", lang)
+		if len(xlnsMap) != len(enWords) {
+			t.Fatalf(
+				"bad translation map len for %s %d!=%d",
+				lang, len(enWords), len(xlnsMap))
+		}
+		for _, word := range enWords {
+			xln, ok := xlnsMap[word]
+			if !ok {
+				t.Errorf("%s missing translation", lang)
+			}
+			if xln == "" {
+				t.Errorf("%s empty translation", lang)
+			}
+		}
+	}
+}

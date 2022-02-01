@@ -61,15 +61,15 @@ func WordsHasLanguage(wordsDir, lang string) (bool, error) {
 }
 
 // WordsXlnsMap creates an XlnsMap object for the given languages.
-func WordsXlnsMap(wordsDir, sourceIso639, targetIso639 string) (XlnsMap, error) {
-	source := WordsFilename(wordsDir, sourceIso639)
-	target := WordsFilename(wordsDir, targetIso639)
+func WordsXlnsMap(wordsDir, sourceLang, targetLang string) (XlnsMap, error) {
+	source := WordsFilename(wordsDir, sourceLang)
+	target := WordsFilename(wordsDir, targetLang)
 	return XlnsMapFromFiles(source, target)
 }
 
 // WordsGetWords returns the words for the given language.
-func WordsGetWords(wordsDir, iso639 string) ([]string, error) {
-	filename := WordsFilename(wordsDir, iso639)
+func WordsGetWords(wordsDir, lang string) ([]string, error) {
+	filename := WordsFilename(wordsDir, lang)
 	r, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("opening %s got %v", filename, err)
@@ -87,8 +87,8 @@ func WordsGetWords(wordsDir, iso639 string) ([]string, error) {
 }
 
 // WordsWriteWords writes the words for a language.
-func WordsWriteWords(wordsDir, iso639 string, words []string) error {
-	filename := WordsFilename(wordsDir, iso639)
+func WordsWriteWords(wordsDir, lang string, words []string) error {
+	filename := WordsFilename(wordsDir, lang)
 	w, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("creating %s got %v", filename, err)
@@ -104,8 +104,8 @@ func WordsWriteWords(wordsDir, iso639 string, words []string) error {
 }
 
 // WordsFilename returns the path of the words file for the given language.
-func WordsFilename(wordsDir, iso639 string) string {
-	return path.Join(wordsDir, iso639+WORDS_SUFFIX)
+func WordsFilename(wordsDir, lang string) string {
+	return path.Join(wordsDir, lang+WORDS_SUFFIX)
 }
 
 // WordsMerge adds the words in fromWordsDir to toWordsDir.  If toWordsDir
@@ -137,6 +137,7 @@ func WordsMerge(toWordsDir, fromWordsDir string) error {
 	}
 	// Merge the files.
 	xlnss := make(map[string]XlnsMap)
+	// TODO: assumes wordsDirs have language en.
 	enToPath := WordsFilename(toWordsDir, "en")
 	enFromPath := WordsFilename(fromWordsDir, "en")
 	for _, toLang := range fromLangs {
