@@ -1,5 +1,5 @@
 // Common translation tools.
-package xlns
+package translate
 
 import (
 	"bufio"

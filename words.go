@@ -1,6 +1,6 @@
 // words provides information on what languages we have translations
 // (words) for.
-package xlns
+package translate
 
 import (
 	"bufio"

@@ -1,6 +1,6 @@
 // xlns.go
 // Google Cloud API translate functions for words files.
-package xlns
+package translate
 
 import (
 	"context"

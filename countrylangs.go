@@ -1,4 +1,4 @@
-package xlns
+package translate
 
 import (
     "strings"

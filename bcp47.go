@@ -1,7 +1,7 @@
 // bcp47 contains:
 //   information correlating ISO 639 and ISO 3166 codes,
 //   see http://www.rfc-editor.org/rfc/bcp/bcp47.txt
-package xlns
+package translate
 
 import (
 	"strings"

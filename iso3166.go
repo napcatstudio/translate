@@ -1,5 +1,5 @@
 // iso3166 contains information about ISO 3166 country codes.
-package xlns
+package translate
 
 import (
     "strings"

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/napcatstudio/translate/xlns"
+	xlns "github.com/napcatstudio/translate"
 )
 
 const (

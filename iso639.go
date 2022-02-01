@@ -1,6 +1,6 @@
 // iso639 contains information about ISO 639 language and language group
 // codes.
-package xlns
+package translate
 
 import (
     "strings"
