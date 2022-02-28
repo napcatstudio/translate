@@ -11,8 +11,8 @@ func TestIso3166ForCountry(t *testing.T) {
 	var tests = []struct {
 		country, iso3166 string
 	}{
-		{"United States", "US"},
-		{"United Kingdom", "GB"},
+		{"United States of America", "US"},
+		{"United Kingdom of Great Britain and Northern Ireland", "GB"},
 		{"Frigdia", ""},
 	}
 	for _, test := range tests {
@@ -28,8 +28,8 @@ func TestCountryForIso3166(t *testing.T) {
 	var tests = []struct {
 		iso3166, country string
 	}{
-		{"US", "UNITED STATES"},
-		{"gb", "UNITED KINGDOM"},
+		{"US", "United States of America"},
+		{"gb", "United Kingdom of Great Britain and Northern Ireland"},
 		{"fg", ""},
 	}
 	for _, test := range tests {
