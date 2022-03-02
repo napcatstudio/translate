@@ -47,17 +47,52 @@ func WordsLanguagesMap(wordsDir string) (map[string]bool, error) {
 // WordsHasLanguage returns whether or not we have a translation words file
 // for the given code.
 // This used to check for strict ISO-639 languages and not be case sensitive.
-func WordsHasLanguage(wordsDir, lang string) (bool, error) {
-	langs, err := WordsLanguages(wordsDir)
+func WordsHasLanguage(wordsDir, bcp47 string) (bool, error) {
+	lang, err := getLang(wordsDir, bcp47)
 	if err != nil {
 		return false, err
 	}
+	return lang != "", nil
+}
+
+// getLang returns the language in words to use.  If 'en-US' is asked for and
+// 'en-US' is not present will find 'en' if that is present.  Will return ""
+// for a missing language.
+func getLang(wordsDir, bcp47 string) (string, error) {
+	langs, err := WordsLanguages(wordsDir)
+	if err != nil {
+		return "", err
+	}
+	// If we can't find an exact match we'll settle for the base language.
+	iso639 := Iso639FromBcp47(bcp47)
+	found639 := false
 	for _, wordsLang := range langs {
-		if lang == wordsLang {
-			return true, nil
+		if bcp47 == wordsLang {
+			// Exact match.
+			return bcp47, nil
+		}
+		if iso639 == wordsLang {
+			// Base lang.
+			found639 = true
 		}
 	}
-	return false, nil
+	if found639 {
+		return iso639, nil
+	} else {
+		return "", nil
+	}
+}
+
+// WordsGetLang returns the words file language to use for locale 'bcp47'.
+func WordsGetLang(wordsDir, bcp47 string) (string, error) {
+	lang, err := getLang(wordsDir, bcp47)
+	if err != nil {
+		return "", err
+	}
+	if lang == "" {
+		return "", fmt.Errorf("%s missing BCP 47 %s", wordsDir, bcp47)
+	}
+	return lang, nil
 }
 
 // WordsXlnsMap creates an XlnsMap object for the given languages.
@@ -68,7 +103,14 @@ func WordsXlnsMap(wordsDir, sourceLang, targetLang string) (XlnsMap, error) {
 }
 
 // WordsGetWords returns the words for the given language.
-func WordsGetWords(wordsDir, lang string) ([]string, error) {
+func WordsGetWords(wordsDir, bcp47 string) ([]string, error) {
+	lang, err := getLang(wordsDir, bcp47)
+	if err != nil {
+		return nil, err
+	}
+	if lang == "" {
+		return nil, fmt.Errorf("no language for %s", bcp47)
+	}
 	filename := WordsFilename(wordsDir, lang)
 	r, err := os.Open(filename)
 	if err != nil {
