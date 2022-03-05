@@ -79,7 +79,7 @@ func (xm XlnsMap) Translate(source, target string) string {
 	if ok {
 		return cleanUp(source, newTarget)
 	}
-	if isCamelCase(source) {
+	if IsCamelCase(source) {
 		pieces := camelCasePieces(source)
 		for ip, p := range pieces {
 			pieces[ip] = xm.Translate(p, "")
@@ -158,7 +158,8 @@ func (xm XlnsMap) Key() []string {
 	return key
 }
 
-func isCamelCase(s string) bool {
+// IsCamelCase return true if the string is camelCase.
+func IsCamelCase(s string) bool {
 	first := true
 	lastLower := false
 	for _, rv := range s {
