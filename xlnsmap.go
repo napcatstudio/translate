@@ -70,8 +70,6 @@ func (xm XlnsMap) Translate(source, target string) string {
 		if envVal != "" {
 			return xm.Translate(envVal, target)
 		}
-		//form := `"%s" not found in environment (using "%s")` + "\n"
-		//fmt.Fprintf(os.Stderr, form, envKey, target)
 		return target
 	}
 	// Uppercase version of known word?
@@ -94,8 +92,6 @@ func (xm XlnsMap) Translate(source, target string) string {
 	if err == nil {
 		return source
 	}
-	//form := `"%s" not found (using "%s")` + "\n"
-	//fmt.Fprintf(os.Stderr, form, source, target)
 	return target
 }
 
@@ -133,6 +129,16 @@ func (xm XlnsMap) TranslateByLine(source string) string {
 		xlines[il] = xline
 	}
 	return strings.Join(xlines, "\n")
+}
+
+// TranslateByLineWithAlternate translates like TranslateByLine but if the
+// translation is too long translates alternative text instead.
+func (xm XlnsMap) TranslateByLineWithAlternate(source, altSource string, limit int) string {
+	xlns := xm.TranslateByLine(source)
+	if len(xlns) > limit && altSource != "" {
+		xlns = xm.TranslateByLine(altSource)
+	}
+	return xlns
 }
 
 // TranslateWords translates a list of words.  If there is no translation

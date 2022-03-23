@@ -47,12 +47,12 @@ func WordsLanguagesMap(wordsDir string) (map[string]bool, error) {
 // WordsHasLanguage returns whether or not we have a translation words file
 // for the given code.
 // This used to check for strict ISO-639 languages and not be case sensitive.
-func WordsHasLanguage(wordsDir, bcp47 string) (bool, error) {
+func WordsHasLanguage(wordsDir, bcp47 string) bool {
 	lang, err := getLang(wordsDir, bcp47)
 	if err != nil {
-		return false, err
+		return false
 	}
-	return lang != "", nil
+	return lang != ""
 }
 
 // getLang returns the language in words to use.  If 'en-US' is asked for and
