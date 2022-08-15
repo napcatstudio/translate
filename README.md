@@ -33,17 +33,22 @@ Helppo.
 It uses the Google Translate API V3 for translating.
 
 Usage:
+
 	translate [-words wordsDir] [-credentials credentialsJson] command [arguments]
 
 The commands are:
+
 	add mainLang newLang [newLang..]
 	  Add a new meaning ordered words file for newLang based on mainLang to
 	  wordsDir.
+
 	check
 	  Quick wordsDir check.  Does not check translation accuracy just
 	  consistency.  Does not call the Google Translate API.
+
 	supported displayLang
 	  Show the current Google supported languages in displayLang.
+
 	update mainLang
 	  Updates all meaning ordered words files in wordsDir.  Effectively,
 	  calls add on each existing non-mainLang language.
@@ -63,4 +68,4 @@ A directory of these files can be maintained with these tools so that for differ
 
 ## golang
 
-github.com/napcatstudio/translate
+	github.com/napcatstudio/translate/v2
